@@ -1,0 +1,165 @@
+## 📱 Cursor Build Prompt: Lane-Switching Car Game (Expo / React Native)
+
+### 1. App Overview
+
+Build a **native mobile car game** using **Expo + React Native** where the player controls a car that **switches lanes to avoid obstacles**.
+The game integrates a **public recipe API** in a creative way: recipes act as **power-ups, themes, or score modifiers** that appear during gameplay.
+
+The app should be:
+
+* Mobile-first (iOS & Android)
+* Built with Expo
+* Clean, responsive, and performant
+* Deployable via **Vercel (Expo Web build)**
+
+---
+
+### 2. Technical Requirements
+
+* **Framework:** Expo (React Native)
+* **Language:** TypeScript
+* **State Management:** React hooks (useState, useEffect, useRef)
+* **Game Loop:** requestAnimationFrame or setInterval
+* **Navigation:** expo-router or React Navigation
+* **API Fetching:** fetch / axios
+* **Animations:** Animated API or Reanimated
+* **Deployment Target:** Vercel (Expo Web)
+
+---
+
+### 3. Core Game Mechanics
+
+* Vertical scrolling road with **3 lanes**
+* Player car can switch lanes via:
+
+  * Swipe left / right
+  * Or tap buttons
+* Obstacles spawn randomly and move downward
+* Collision detection ends the game
+* Increasing difficulty over time (speed & spawn rate)
+
+---
+
+### 4. Features
+
+#### Gameplay
+
+* Lane switching
+* Score counter (distance survived)
+* Increasing difficulty
+* Game over & restart screen
+
+#### Recipe API Integration
+
+* Fetch recipes from an **open public recipe API**
+* Recipes appear as:
+
+  * Power-ups (speed boost, shield, slow obstacles)
+  * Visual collectibles
+  * Score multipliers
+* Display recipe name + thumbnail when collected
+
+#### UI
+
+* Start screen
+* Game screen
+* Game over screen
+* Optional recipe detail modal
+
+---
+
+### 5. API Specification
+
+Use a **free and open recipe API**, such as:
+
+**TheMealDB (recommended)**
+
+* Base URL: `https://www.themealdb.com/api/json/v1/1`
+* Example endpoint:
+  `/search.php?s=chicken`
+
+**Usage in Game**
+
+* Fetch random recipes on game start
+* Store recipe list in state
+* Randomly spawn recipe items on the road
+* On collection, apply effect based on recipe category or area
+
+---
+
+### 6. Styling & UX
+
+* Use a **dark asphalt road** with white lane dividers
+* Bright, arcade-style colors
+* Simple car and obstacle shapes (rectangles or SVGs)
+* Smooth animations (60 FPS target)
+* Mobile-friendly touch controls
+* Responsive layout for Expo Web
+
+---
+
+### 7. File Structure
+
+```
+/app
+  ├── index.tsx          // Start screen
+  ├── game.tsx           // Main game loop
+  ├── gameover.tsx       // Game over screen
+/components
+  ├── Car.tsx
+  ├── Obstacle.tsx
+  ├── RecipeItem.tsx
+/hooks
+  ├── useGameLoop.ts
+  ├── useRecipes.ts
+/utils
+  ├── collision.ts
+  ├── constants.ts
+```
+
+---
+
+### 8. Deployment Readiness
+
+* Compatible with **Expo Web**
+* No native-only dependencies
+* Environment variables supported via `process.env`
+* Optimized for Vercel deployment
+* Include `npm run build:web` compatibility
+
+---
+
+### 9. Output Expectations
+
+Generate:
+
+1. Fully functional Expo app code
+2. Clean, commented React Native components
+3. Recipe API integration
+4. Lane-switching game logic
+5. Ready-to-deploy Expo Web build
+6. Instructions to run locally and deploy on Vercel
+
+---
+
+### 10. Development Notes
+
+* Favor simplicity over realism
+* Use placeholder graphics where needed
+* Ensure all API calls are safe and error-handled
+* Code should be production-ready and readable
+
+---
+
+**End of Prompt**
+
+---
+
+If you want, I can also:
+
+* Convert this into a **Cursor “system prompt”**
+* Add **monetization mechanics**
+* Replace recipes with **AI-generated content**
+* Add **multiplayer or leaderboard support**
+
+Just tell me 👍
