@@ -77,6 +77,7 @@ export default function GameScreen() {
   const [running, setRunning] = useState(true); // game is still alive (not gameover)
   const [paused, setPaused] = useState(false); // pause when recipe modal (or any route) opens
   const [needsManualResume, setNeedsManualResume] = useState(false);
+  const [resumeCountdown, setResumeCountdown] = useState<number | null>(null);
   const [carLane, setCarLane] = useState(1);
   const [score, setScore] = useState(0);
 
@@ -99,23 +100,54 @@ export default function GameScreen() {
 
   const hudUntilRef = useRef(0);
 
+  const resumeCountdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const resumeRampStartMsRef = useRef<number>(0);
+
   const carY = roadHeight - 170;
+
+  function clearResumeCountdown() {
+    if (resumeCountdownTimerRef.current) clearInterval(resumeCountdownTimerRef.current);
+    resumeCountdownTimerRef.current = null;
+    setResumeCountdown(null);
+  }
 
   // Pause whenever this screen isn't focused (e.g. recipe modal is open).
   // When focus returns, require an explicit "Resume" action.
   useEffect(() => {
     if (!running) return;
     if (!isFocused) {
+      clearResumeCountdown();
       setPaused(true);
       setNeedsManualResume(true);
     }
+    return () => {
+      // If we ever unmount while a countdown is running.
+      if (!isFocused) return;
+      // no-op
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFocused, running]);
 
   function resume() {
     if (!running) return;
     if (!isFocused) return;
-    setPaused(false);
+    // Trigger a 3..2..1 countdown first, then resume with a brief slow-start ramp.
+    if (resumeCountdownTimerRef.current) return;
     setNeedsManualResume(false);
+    setResumeCountdown(3);
+    resumeCountdownTimerRef.current = setInterval(() => {
+      setResumeCountdown((prev) => {
+        if (prev == null) return null;
+        if (prev <= 1) {
+          if (resumeCountdownTimerRef.current) clearInterval(resumeCountdownTimerRef.current);
+          resumeCountdownTimerRef.current = null;
+          resumeRampStartMsRef.current = nowMs();
+          setPaused(false);
+          return null;
+        }
+        return prev - 1;
+      });
+    }, 1000);
   }
 
   const panResponder = useMemo(() => {
@@ -154,6 +186,7 @@ export default function GameScreen() {
     setRunning(false);
     setPaused(true);
     setNeedsManualResume(false);
+    clearResumeCountdown();
     setTimeout(() => {
       router.replace({ pathname: '/gameover', params: { score: String(Math.floor(scoreRef.current)) } });
     }, 120);
@@ -177,7 +210,22 @@ export default function GameScreen() {
 
       const speedFactor = hasSlow ? EFFECT_FACTORS.slowSpeed : hasBoost ? EFFECT_FACTORS.boostSpeed : 1;
       const baseSpeed = BASE_SPEED_PX_PER_SEC + timeAliveRef.current * SPEED_RAMP_PX_PER_SEC;
-      const speed = baseSpeed * speedFactor;
+
+      // After resuming (post-countdown), start slightly slower then ramp back up.
+      // This avoids an abrupt restart and feels more readable.
+      const rampStart = resumeRampStartMsRef.current;
+      const rampDurationMs = 1100;
+      const rampStartFactor = 0.78;
+      let resumeRampFactor = 1;
+      if (rampStart > 0) {
+        const t = Math.max(0, Math.min(1, (ms - rampStart) / rampDurationMs));
+        // easeOutCubic
+        const eased = 1 - Math.pow(1 - t, 3);
+        resumeRampFactor = rampStartFactor + (1 - rampStartFactor) * eased;
+        if (t >= 1) resumeRampStartMsRef.current = 0;
+      }
+
+      const speed = baseSpeed * speedFactor * resumeRampFactor;
 
       const multiplier = hasMultiplier ? EFFECT_FACTORS.multiplier : 1;
       scoreRef.current += speed * dt * 0.05 * multiplier; // tuned
@@ -353,11 +401,21 @@ export default function GameScreen() {
           {running && paused && isFocused ? (
             <View style={styles.pauseOverlay} pointerEvents="box-none">
               <View style={styles.pauseCard} pointerEvents="auto">
-                <Text style={styles.pauseTitle}>Paused</Text>
-                <Text style={styles.pauseHint}>Tap Resume when you're ready.</Text>
-                <TouchableOpacity style={styles.pauseBtn} onPress={resume} accessibilityLabel="Resume game">
-                  <Text style={styles.pauseBtnText}>Resume</Text>
-                </TouchableOpacity>
+                {resumeCountdown != null ? (
+                  <>
+                    <Text style={styles.pauseTitle}>Resuming…</Text>
+                    <Text style={styles.countdown}>{resumeCountdown}</Text>
+                    <Text style={styles.pauseHint}>Get ready.</Text>
+                  </>
+                ) : needsManualResume ? (
+                  <>
+                    <Text style={styles.pauseTitle}>Paused</Text>
+                    <Text style={styles.pauseHint}>Tap Resume when you're ready.</Text>
+                    <TouchableOpacity style={styles.pauseBtn} onPress={resume} accessibilityLabel="Resume game">
+                      <Text style={styles.pauseBtnText}>Resume</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : null}
               </View>
             </View>
           ) : null}
@@ -382,6 +440,7 @@ export default function GameScreen() {
                   // Pause immediately so nothing moves during the transition.
                   setPaused(true);
                   setNeedsManualResume(true);
+                  clearResumeCountdown();
                   router.push({ pathname: '/recipe', params: { id: hudRecipe.idMeal } });
                 }}
               >
@@ -480,6 +539,13 @@ const styles = StyleSheet.create({
   },
   pauseTitle: { color: '#fff', fontWeight: '900', fontSize: 18 },
   pauseHint: { color: 'rgba(232,236,255,0.78)', fontWeight: '700', textAlign: 'center' },
+  countdown: {
+    color: '#fff',
+    fontWeight: '900',
+    fontSize: 64,
+    lineHeight: 70,
+    marginVertical: 2,
+  },
   pauseBtn: {
     marginTop: 4,
     paddingHorizontal: 14,
