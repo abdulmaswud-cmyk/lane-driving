@@ -4,6 +4,7 @@ import { ActivityIndicator, Image, SafeAreaView, ScrollView, StyleSheet, Text, T
 
 import type { MealDbRecipe } from '@/hooks/useRecipes';
 import { COLORS } from '@/utils/constants';
+import { loadCachedRecipeById } from '@/utils/recipeCache';
 
 type MealDbLookupResponse = { meals: MealDbRecipe[] | null };
 
@@ -23,6 +24,11 @@ export default function RecipeModal() {
         setError('Missing recipe id');
         return;
       }
+
+      // Show cached recipe immediately (offline-friendly).
+      const cached = await loadCachedRecipeById(id);
+      if (!cancelled && cached) setRecipe(cached);
+
       setLoading(true);
       setError(null);
       try {
@@ -32,7 +38,10 @@ export default function RecipeModal() {
         const meal = json.meals?.[0] ?? null;
         if (!cancelled) setRecipe(meal);
       } catch (e) {
-        if (!cancelled) setError((e as Error).message ?? 'Failed to load recipe');
+        // If we already have cached data, keep it and don't hard-fail the view.
+        if (!cancelled) {
+          if (!recipe) setError((e as Error).message ?? 'Failed to load recipe');
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -41,6 +50,7 @@ export default function RecipeModal() {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   return (

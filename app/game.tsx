@@ -66,7 +66,13 @@ export default function GameScreen() {
   const roadLeft = (screen.width - roadWidth) / 2;
   const roadHeight = screen.height;
 
-  const { recipes, loading: recipesLoading, error: recipesError, refetch } = useRecipes({ enabled: true, count: 12 });
+  const {
+    recipes,
+    loading: recipesLoading,
+    error: recipesError,
+    usingCache: recipesUsingCache,
+    refetch,
+  } = useRecipes({ enabled: true, count: 12 });
 
   const [running, setRunning] = useState(true); // game is still alive (not gameover)
   const [paused, setPaused] = useState(false); // pause when recipe modal (or any route) opens
@@ -385,9 +391,16 @@ export default function GameScreen() {
           </View>
         ) : null}
 
-        {recipesError ? (
+        {recipesError && !recipesUsingCache ? (
           <View style={styles.banner}>
             <Text style={styles.bannerText}>Recipe fetch failed: {recipesError}</Text>
+            <TouchableOpacity onPress={refetch} style={styles.bannerBtn}>
+              <Text style={styles.bannerBtnText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : recipesError && recipesUsingCache ? (
+          <View style={styles.banner}>
+            <Text style={styles.bannerText}>Offline: using cached recipes</Text>
             <TouchableOpacity onPress={refetch} style={styles.bannerBtn}>
               <Text style={styles.bannerBtnText}>Retry</Text>
             </TouchableOpacity>

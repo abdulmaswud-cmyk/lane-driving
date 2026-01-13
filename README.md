@@ -35,3 +35,8 @@ Vercel settings:
 Recipes are fetched from TheMealDB (`https://www.themealdb.com/api/json/v1/1`) and spawn as collectibles.
 Collecting one applies an effect (shield/boost/slow/x2) and lets you open a recipe detail modal.
 
+### Offline support
+
+- The game **works without a network connection** by using **cached recipes** (saved locally) or a small built-in fallback list on first offline launch.
+- The recipe modal will show cached recipe details when available.
+
