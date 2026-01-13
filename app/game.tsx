@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
-import React, { useMemo, useRef, useState } from 'react';
+import { useIsFocused } from '@react-navigation/native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dimensions,
   PanResponder,
@@ -59,6 +60,7 @@ function nowMs() {
 }
 
 export default function GameScreen() {
+  const isFocused = useIsFocused();
   const screen = Dimensions.get('window');
   const roadWidth = Math.min(screen.width * ROAD_WIDTH_RATIO, ROAD_MAX_WIDTH);
   const roadLeft = (screen.width - roadWidth) / 2;
@@ -66,7 +68,8 @@ export default function GameScreen() {
 
   const { recipes, loading: recipesLoading, error: recipesError, refetch } = useRecipes({ enabled: true, count: 12 });
 
-  const [running, setRunning] = useState(true);
+  const [running, setRunning] = useState(true); // game is still alive (not gameover)
+  const [paused, setPaused] = useState(false); // pause when recipe modal (or any route) opens
   const [carLane, setCarLane] = useState(1);
   const [score, setScore] = useState(0);
 
@@ -90,6 +93,13 @@ export default function GameScreen() {
   const hudUntilRef = useRef(0);
 
   const carY = roadHeight - 170;
+
+  // Pause whenever this screen isn't focused (e.g. recipe modal is open),
+  // and resume automatically when focus returns (as long as we're not game-over).
+  useEffect(() => {
+    if (!running) return;
+    setPaused(!isFocused);
+  }, [isFocused, running]);
 
   const panResponder = useMemo(() => {
     let startX = 0;
@@ -125,13 +135,14 @@ export default function GameScreen() {
 
   function endGame() {
     setRunning(false);
+    setPaused(true);
     setTimeout(() => {
       router.replace({ pathname: '/gameover', params: { score: String(Math.floor(scoreRef.current)) } });
     }, 120);
   }
 
   useGameLoop({
-    running,
+    running: running && !paused,
     onFrame: (dt) => {
       timeAliveRef.current += dt;
 
@@ -337,7 +348,11 @@ export default function GameScreen() {
             {hudRecipe ? (
               <TouchableOpacity
                 style={styles.toastLink}
-                onPress={() => router.push({ pathname: '/recipe', params: { id: hudRecipe.idMeal } })}
+                onPress={() => {
+                  // Pause immediately so nothing moves during the transition.
+                  setPaused(true);
+                  router.push({ pathname: '/recipe', params: { id: hudRecipe.idMeal } });
+                }}
               >
                 <Text style={styles.toastLinkText}>View recipe</Text>
               </TouchableOpacity>
