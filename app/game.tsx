@@ -70,6 +70,7 @@ export default function GameScreen() {
 
   const [running, setRunning] = useState(true); // game is still alive (not gameover)
   const [paused, setPaused] = useState(false); // pause when recipe modal (or any route) opens
+  const [needsManualResume, setNeedsManualResume] = useState(false);
   const [carLane, setCarLane] = useState(1);
   const [score, setScore] = useState(0);
 
@@ -94,12 +95,22 @@ export default function GameScreen() {
 
   const carY = roadHeight - 170;
 
-  // Pause whenever this screen isn't focused (e.g. recipe modal is open),
-  // and resume automatically when focus returns (as long as we're not game-over).
+  // Pause whenever this screen isn't focused (e.g. recipe modal is open).
+  // When focus returns, require an explicit "Resume" action.
   useEffect(() => {
     if (!running) return;
-    setPaused(!isFocused);
+    if (!isFocused) {
+      setPaused(true);
+      setNeedsManualResume(true);
+    }
   }, [isFocused, running]);
+
+  function resume() {
+    if (!running) return;
+    if (!isFocused) return;
+    setPaused(false);
+    setNeedsManualResume(false);
+  }
 
   const panResponder = useMemo(() => {
     let startX = 0;
@@ -136,6 +147,7 @@ export default function GameScreen() {
   function endGame() {
     setRunning(false);
     setPaused(true);
+    setNeedsManualResume(false);
     setTimeout(() => {
       router.replace({ pathname: '/gameover', params: { score: String(Math.floor(scoreRef.current)) } });
     }, 120);
@@ -331,6 +343,18 @@ export default function GameScreen() {
           >
             <Car width={CAR_WIDTH} height={CAR_HEIGHT} />
           </View>
+
+          {running && paused && isFocused ? (
+            <View style={styles.pauseOverlay} pointerEvents="box-none">
+              <View style={styles.pauseCard} pointerEvents="auto">
+                <Text style={styles.pauseTitle}>Paused</Text>
+                <Text style={styles.pauseHint}>Tap Resume when you're ready.</Text>
+                <TouchableOpacity style={styles.pauseBtn} onPress={resume} accessibilityLabel="Resume game">
+                  <Text style={styles.pauseBtnText}>Resume</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : null}
         </View>
 
         <View style={styles.controls}>
@@ -351,6 +375,7 @@ export default function GameScreen() {
                 onPress={() => {
                   // Pause immediately so nothing moves during the transition.
                   setPaused(true);
+                  setNeedsManualResume(true);
                   router.push({ pathname: '/recipe', params: { id: hudRecipe.idMeal } });
                 }}
               >
@@ -423,6 +448,37 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.laneLine,
   },
   entity: { position: 'absolute' },
+  pauseOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  pauseCard: {
+    width: '78%',
+    maxWidth: 360,
+    borderRadius: 16,
+    padding: 14,
+    backgroundColor: 'rgba(0,0,0,0.78)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.16)',
+    alignItems: 'center',
+    gap: 8,
+  },
+  pauseTitle: { color: '#fff', fontWeight: '900', fontSize: 18 },
+  pauseHint: { color: 'rgba(232,236,255,0.78)', fontWeight: '700', textAlign: 'center' },
+  pauseBtn: {
+    marginTop: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: COLORS.car,
+    borderWidth: 1,
+    borderColor: COLORS.carAccent,
+    width: '100%',
+    alignItems: 'center',
+  },
+  pauseBtnText: { color: '#fff', fontWeight: '900' },
   controls: {
     width: '100%',
     paddingHorizontal: 16,
